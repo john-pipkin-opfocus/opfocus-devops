@@ -2,6 +2,10 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <label>OpFocus DevOps User</label>
     <hasActivationRequired>false</hasActivationRequired>
+    <classAccesses>
+        <apexClass>BitbucketTokenVendor</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <objectPermissions>
         <object>Client_Repo__c</object>
         <allowCreate>true</allowCreate><allowRead>true</allowRead><allowEdit>true</allowEdit>
