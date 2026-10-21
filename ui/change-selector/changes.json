@@ -1,0 +1,75 @@
+{
+  "source": "OpFocus_DevOps",
+  "target": "Thrive_Stage",
+  "generatedAt": "2026-10-21T10:15:00",
+  "summary": { "total": 5, "created": 1, "updated": 3, "deleted": 1 },
+  "components": [
+    {
+      "id": 0,
+      "type": "ApexClass",
+      "fullName": "AccountARRHandler",
+      "changeType": "Updated",
+      "assurance": "High",
+      "autoCheck": true,
+      "language": "apex",
+      "modifiedBy": "John Pipkin",
+      "modifiedDate": "2026-10-20T15:42:00",
+      "summary": "Added calculateARR() to compute ARR from activated contracts and update Account.ARR__c in the handle() loop.",
+      "diff": "@@ AccountARRHandler.handle @@\n     public void handle(List<Account> accounts) {\n         for (Account a : accounts) {\n             a.Health_Score__c = computeHealth(a);\n+            a.ARR__c = calculateARR(a.Id);\n         }\n     }\n+\n+    private Decimal calculateARR(Id accountId) {\n+        Decimal arr = 0;\n+        for (Contract c : [SELECT AnnualValue__c FROM Contract\n+                           WHERE AccountId = :accountId AND Status = 'Activated']) {\n+            arr += c.AnnualValue__c;\n+        }\n+        return arr;\n+    }"
+    },
+    {
+      "id": 1,
+      "type": "ApexClass",
+      "fullName": "OpportunityTriggerHandler",
+      "changeType": "Updated",
+      "assurance": "High",
+      "autoCheck": true,
+      "language": "apex",
+      "sharedWith": "Discount Engine",
+      "modifiedBy": "Priya Nair",
+      "modifiedDate": "2026-10-21T09:05:00",
+      "summary": "Added discount rounding to the before-update path.",
+      "diff": "@@ OpportunityTriggerHandler.beforeUpdate @@\n     private void beforeUpdate(List<Opportunity> opps) {\n         applyStageGating(opps);\n+        for (Opportunity o : opps) {\n+            if (o.Discount__c != null) {\n+                o.Discount__c = o.Discount__c.setScale(2, RoundingMode.HALF_UP);\n+            }\n+        }\n     }"
+    },
+    {
+      "id": 2,
+      "type": "Layout",
+      "fullName": "Deployment__c-Deployment Layout",
+      "changeType": "Updated",
+      "assurance": "Medium",
+      "autoCheck": true,
+      "language": "xml",
+      "modifiedBy": "John Pipkin",
+      "modifiedDate": "2026-10-21T08:12:00",
+      "summary": "Added 2 fields to the Information section (Deployed By, Deployed At).",
+      "diff": "@@ layoutSections 'Information' @@\n             <layoutItems>\n                 <behavior>Edit</behavior>\n                 <field>Status__c</field>\n             </layoutItems>\n+            <layoutItems>\n+                <behavior>Edit</behavior>\n+                <field>Deployed_By__c</field>\n+            </layoutItems>\n+            <layoutItems>\n+                <behavior>Edit</behavior>\n+                <field>Deployed_At__c</field>\n+            </layoutItems>"
+    },
+    {
+      "id": 3,
+      "type": "FlexiPage",
+      "fullName": "Deployment_Record_Page",
+      "changeType": "Created",
+      "assurance": "Medium",
+      "autoCheck": true,
+      "language": "xml",
+      "modifiedBy": "John Pipkin",
+      "modifiedDate": "2026-10-21T08:15:00",
+      "summary": "New Lightning record page for Deployment — 3 regions, highlights panel + related lists. New to the target.",
+      "diff": null
+    },
+    {
+      "id": 4,
+      "type": "CustomField",
+      "fullName": "Opportunity.Legacy_Stage__c",
+      "changeType": "Deleted",
+      "assurance": "High",
+      "autoCheck": false,
+      "destructive": true,
+      "language": null,
+      "modifiedBy": "Alex Rivera",
+      "modifiedDate": "2026-09-30T14:20:00",
+      "summary": "Removes the field from the target. Field data in Thrive_Stage will be permanently deleted. Requires typed confirmation.",
+      "diff": null
+    }
+  ]
+}

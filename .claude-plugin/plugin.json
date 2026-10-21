@@ -1,0 +1,6 @@
+{
+  "name": "opfocus-devops",
+  "version": "0.1.0",
+  "description": "Salesforce DevOps for OpFocus — capture, promote, and track changes across client orgs with a clean Bitbucket VCS, for admins and developers alike.",
+  "author": { "name": "OpFocus" }
+}

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpFocus DevOps — Review & select changes</title>
+  <link rel="stylesheet" href="slds.min.css" />
+  <style>
+    body { margin: 0; background: #f3f3f3; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 1.5rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .ct { display:inline-block; font-size:.7rem; font-weight:700; letter-spacing:.02em; padding:.1rem .45rem; border-radius:.75rem; text-transform:uppercase; }
+    .ct-Created { background:#acf3c6; color:#0a6b33; }
+    .ct-Updated { background:#cfe3ff; color:#0b5cab; }
+    .ct-Deleted { background:#ffcdd2; color:#a40e26; }
+    .flag { display:inline-block; font-size:.7rem; font-weight:600; padding:.08rem .4rem; border-radius:.75rem; margin-left:.4rem; }
+    .flag-shared { background:#ffe8b3; color:#8a5a00; }
+    .flag-destruct { background:#ffd6d6; color:#a40e26; }
+    .chev { cursor:pointer; border:none; background:none; font-size:1rem; color:#5b5b5b; width:1.5rem; }
+    .chev[disabled] { opacity:.25; cursor:default; }
+    .diffwrap { display:none; }
+    .diffwrap.open { display:table-row; }
+    .diff { margin:.25rem 0 .5rem 2.5rem; border:1px solid #e0e0e0; border-radius:.25rem; overflow:auto; }
+    .diff div { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.78rem; line-height:1.45; white-space:pre; padding:0 .6rem; }
+    .dl-add { background:#e6ffed; color:#116329; }
+    .dl-del { background:#ffebe9; color:#a40e26; }
+    .dl-hunk { background:#eef1f5; color:#5b5b5b; }
+    #done { display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="slds-page-header slds-m-bottom_medium">
+      <div class="slds-page-header__row">
+        <div class="slds-page-header__col-title">
+          <div class="slds-media">
+            <div class="slds-media__figure">
+              <span class="slds-icon_container slds-icon-standard-review">
+                <svg class="slds-icon slds-icon_small" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zM9 17H5v-2h4v2zm0-4H5v-2h4v2zm0-4H5V7h4v2zm10 8h-8v-2h8v2zm0-4h-8v-2h8v2zm0-4h-8V7h8v2z"/></svg>
+              </span>
+            </div>
+            <div class="slds-media__body">
+              <h1 class="slds-page-header__title">Review &amp; select changes to promote</h1>
+              <p class="slds-page-header__name-meta"><span id="srcOrg" class="mono"></span> &rarr; <span id="tgtOrg" class="mono"></span> &middot; generated <span id="genAt"></span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slds-page-header__row slds-m-top_small">
+        <div class="slds-page-header__col-meta">
+          <ul class="slds-list_horizontal slds-has-dividers_right">
+            <li class="slds-item">Total: <strong id="cTotal">0</strong></li>
+            <li class="slds-item"><span class="ct ct-Created">Created</span> <strong id="cCreated">0</strong></li>
+            <li class="slds-item"><span class="ct ct-Updated">Updated</span> <strong id="cUpdated">0</strong></li>
+            <li class="slds-item"><span class="ct ct-Deleted">Deleted</span> <strong id="cDeleted">0</strong></li>
+            <li class="slds-item">Selected: <strong id="cSel">0</strong></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slds-box slds-theme_default slds-m-bottom_medium" id="banner">
+      <p>Each change shows a plain-English summary. Click the <strong>&rsaquo;</strong> to see the exact line diff. Deletions are unchecked and flagged — they need typed confirmation at deploy. Review, adjust, then <strong>Submit selection</strong>.</p>
+    </div>
+
+    <table class="slds-table slds-table_bordered slds-table_cell-buffer" aria-label="Changes">
+      <thead>
+        <tr class="slds-line-height_reset">
+          <th style="width:2.5rem">
+            <span class="slds-checkbox"><input type="checkbox" id="selAll" /><label class="slds-checkbox__label" for="selAll"><span class="slds-checkbox_faux"></span><span class="slds-assistive-text">Select all</span></label></span>
+          </th>
+          <th style="width:2rem"></th>
+          <th><div class="slds-truncate" title="Component">Component</div></th>
+          <th style="width:11rem"><div class="slds-truncate" title="Change">Change</div></th>
+          <th><div class="slds-truncate" title="Summary">Summary of changes</div></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <div class="slds-m-top_medium">
+      <button class="slds-button slds-button_brand" id="submitBtn">Submit selection</button>
+      <span id="done" class="slds-text-color_success slds-m-left_small">Selection sent to Claude. You can close this tab.</span>
+    </div>
+  </div>
+
+  <script>
+    let COMPONENTS = [];
+    function renderDiff(text) {
+      if (!text) return '';
+      return text.split('\n').map(function (ln) {
+        var cls = ln.startsWith('@@') ? 'dl-hunk' : (ln.startsWith('+') ? 'dl-add' : (ln.startsWith('-') ? 'dl-del' : ''));
+        var esc = ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return '<div class="' + cls + '">' + (esc === '' ? '&nbsp;' : esc) + '</div>';
+      }).join('');
+    }
+    function fmtDate(iso) { if (!iso) return ''; var d = new Date(iso); return String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0') + '/' + d.getFullYear(); }
+    function fullDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }); }
+    async function load() {
+      const data = await (await fetch('changes.json', { cache: 'no-store' })).json();
+      COMPONENTS = data.components || [];
+      document.getElementById('srcOrg').textContent = data.source || '';
+      document.getElementById('tgtOrg').textContent = data.target || '';
+      document.getElementById('genAt').textContent = data.generatedAt || '';
+      document.getElementById('cTotal').textContent = data.summary.total;
+      document.getElementById('cCreated').textContent = data.summary.created;
+      document.getElementById('cUpdated').textContent = data.summary.updated;
+      document.getElementById('cDeleted').textContent = data.summary.deleted;
+      const tb = document.getElementById('rows');
+      tb.innerHTML = '';
+      COMPONENTS.forEach(function (c) {
+        const tr = document.createElement('tr');
+        const shared = c.sharedWith ? '<span class="flag flag-shared" title="Shared with another initiative">also in: ' + c.sharedWith + '</span>' : '';
+        const destruct = c.destructive ? '<span class="flag flag-destruct">destructive</span>' : '';
+        const hasDiff = !!c.diff;
+        tr.innerHTML =
+          '<td><span class="slds-checkbox"><input type="checkbox" id="chk-' + c.id + '" class="rowchk" data-id="' + c.id + '" ' + (c.autoCheck ? 'checked' : '') + ' /><label class="slds-checkbox__label" for="chk-' + c.id + '"><span class="slds-checkbox_faux"></span><span class="slds-assistive-text">select</span></label></span></td>' +
+          '<td><button class="chev" data-id="' + c.id + '" ' + (hasDiff ? '' : 'disabled') + ' aria-label="toggle diff">&rsaquo;</button></td>' +
+          '<td><div class="mono">' + c.fullName + '</div><div class="slds-text-body_small slds-text-color_weak">' + c.type + '</div></td>' +
+          '<td><span class="ct ct-' + c.changeType + '">' + c.changeType + '</span>' +
+            '<div class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">' + (c.modifiedBy || '—') + '</div>' +
+            '<div class="slds-text-body_small slds-text-color_weak" title="' + fullDate(c.modifiedDate) + '" style="cursor:default; border-bottom:1px dotted #bbb; display:inline-block;">' + fmtDate(c.modifiedDate) + '</div></td>' +
+          '<td>' + c.summary + ' ' + shared + destruct + '</td>';
+        tb.appendChild(tr);
+        const dtr = document.createElement('tr');
+        dtr.className = 'diffwrap';
+        dtr.id = 'diff-' + c.id;
+        dtr.innerHTML = '<td colspan="5"><div class="diff">' + renderDiff(c.diff) + '</div></td>';
+        tb.appendChild(dtr);
+      });
+      document.querySelectorAll('.rowchk').forEach(function (cb) { cb.addEventListener('change', updateCount); });
+      document.querySelectorAll('.chev').forEach(function (b) {
+        b.addEventListener('click', function () {
+          const row = document.getElementById('diff-' + b.dataset.id);
+          const open = row.classList.toggle('open');
+          b.innerHTML = open ? '&rsaquo;'.replace('›','⌄') : '&rsaquo;';
+          b.style.transform = open ? 'rotate(90deg)' : 'none';
+        });
+      });
+      document.getElementById('selAll').addEventListener('change', function (e) {
+        document.querySelectorAll('.rowchk').forEach(function (cb) { cb.checked = e.target.checked; });
+        updateCount();
+      });
+      updateCount();
+    }
+    function selected() { return [].slice.call(document.querySelectorAll('.rowchk')).filter(function (cb) { return cb.checked; }).map(function (cb) { return COMPONENTS.find(function (c) { return String(c.id) === cb.dataset.id; }); }); }
+    function updateCount() { document.getElementById('cSel').textContent = selected().length; }
+    document.getElementById('submitBtn').addEventListener('click', async function () {
+      const btn = document.getElementById('submitBtn'); btn.disabled = true;
+      try {
+        await fetch('submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selected: selected() }) });
+        document.getElementById('done').style.display = 'inline-block';
+        document.getElementById('banner').style.display = 'none';
+      } catch (e) { btn.disabled = false; alert('Could not send: ' + e); }
+    });
+    load();
+  </script>
+</body>
+</html>

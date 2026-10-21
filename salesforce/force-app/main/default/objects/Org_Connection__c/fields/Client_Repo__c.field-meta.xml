@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Client_Repo__c</fullName>
+    <label>Client Repo</label>
+    <type>Lookup</type>
+    <referenceTo>Client_Repo__c</referenceTo>
+    <relationshipLabel>Org Connections</relationshipLabel>
+    <relationshipName>Org_Connections</relationshipName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <required>false</required>
+</CustomField>

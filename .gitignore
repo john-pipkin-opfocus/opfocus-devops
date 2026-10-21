@@ -1,0 +1,11 @@
+# OS / editor
+.DS_Store
+*.log
+
+# Salesforce CLI local state (per-clone, never versioned)
+**/.sf/
+**/.sfdx/
+
+# change-selector runtime artifacts (generated per promote)
+ui/change-selector/selection.json
+ui/change-selector/package.xml
