@@ -1,19 +1,51 @@
 # OpFocus DevOps
 
-A Claude plugin that lets every OpFocus consultant — admins and developers alike — capture, promote, and track Salesforce changes across client orgs while keeping a clean Bitbucket version history. It replaces change sets: Claude does the git and `sf` CLI heavy lifting under OpFocus guardrails, and the consultant speaks in plain environment terms ("promote my changes from Dev to Partial").
+A Claude Code plugin that lets every OpFocus consultant — admins and developers alike — capture, promote, and track Salesforce changes across client orgs while keeping a clean Bitbucket version history. It replaces change sets: Claude does the git and `sf` CLI heavy lifting under OpFocus guardrails, and the consultant speaks in plain environment terms ("promote my changes from Dev to Partial").
 
-See the design doc for the full architecture.
+## Install
 
-## Pieces
+The plugin lives in a private Bitbucket repo, so Claude Code uses your **existing git credentials** (it never prompts). Each consultant installs once:
 
-- **`salesforce/`** — the deployment-tracking backend (custom objects) deployed into `OpFocus_Prod`. This is the shared database every team reads and writes.
-- **`skills/`** — the skills Claude runs:
-  - `setup-backend` — deploy/verify the tracking objects in `OpFocus_Prod` (run once).
-  - (coming) `setup-client-repo` — stand up a client's Bitbucket repo, branches, baseline, and `pipeline.yml`.
-  - (coming) `capture-and-promote` — the admin's daily driver.
+1. **Prime your Bitbucket credential** (so the non-interactive clone can authenticate):
+   ```bash
+   git ls-remote https://bitbucket.org/opfocusdevtem/opfocus-devops.git
+   ```
+   (Enter your Bitbucket credentials if prompted; your credential helper stores them.)
+2. **Add the marketplace and install**, in a Claude Code session:
+   ```
+   /plugin marketplace add https://bitbucket.org/opfocusdevtem/opfocus-devops.git
+   /plugin install opfocus-devops@opfocus-marketplace
+   ```
 
-## Requirements
+The three skills then become available — invoke them by asking in plain language, or directly as `/opfocus-devops:<skill>`.
 
-- Salesforce CLI (`sf`) — installed by the plugin's setup.
-- Access to `OpFocus_Prod` (`sf org login web`), aliased `OpFocus_Prod`.
-- Per-client org access, authenticated with `sf org login web`, aliased `Client_Env` (e.g. `CRL_Dev`).
+### Updating
+
+On a new release the maintainer bumps `version` in `.claude-plugin/plugin.json`. Consultants pick it up with:
+```
+/plugin marketplace update opfocus-marketplace
+/plugin install opfocus-devops@opfocus-marketplace
+```
+
+## Skills
+
+- **`setup-backend`** — deploy/verify the tracking objects + permission set in `OpFocus_Prod` (run once, by an admin).
+- **`setup-client-repo`** — stand up a client's Bitbucket repo, branches, scoped baseline, `pipeline.yml`, and backend records (run once per client).
+- **`capture-and-promote`** — the daily driver: detect changes with source tracking, review them (with line diffs) in the selector UI, promote the chosen set, validate, deploy, and record it.
+
+## Layout
+
+- **`salesforce/`** — the deployment-tracking backend (four custom objects + `OpFocus_DevOps_User` permission set), deployed into `OpFocus_Prod`. The shared database every team reads and writes.
+- **`scripts/bb.py`** — Bitbucket helper (client-credentials token, repo create, authenticated git remote).
+- **`ui/change-selector/`** — the SLDS review-and-select UI the promote flow serves locally.
+- **`skills/`** — the three skills above.
+
+## Per-consultant prerequisites
+
+- **Salesforce CLI (`sf`)** installed.
+- **Org access** authenticated with `sf org login web`: `OpFocus_Prod`, and each client org aliased `Client_Env` (e.g. `CRL_Dev`).
+- **`~/.opfocus-devops/bitbucket.json`** — the OAuth-consumer credentials the tool uses to create/push client repos:
+  ```json
+  { "workspace": "opfocusdevtem", "project": "CO", "key": "<KEY>", "secret": "<SECRET>" }
+  ```
+  (The consumer is created once in Bitbucket workspace settings; ask an admin for the key/secret.)

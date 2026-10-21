@@ -1,0 +1,12 @@
+{
+  "name": "opfocus-marketplace",
+  "owner": { "name": "OpFocus" },
+  "description": "OpFocus internal Claude Code plugins",
+  "plugins": [
+    {
+      "name": "opfocus-devops",
+      "source": ".",
+      "description": "Salesforce DevOps for OpFocus — capture, promote, and track changes across client orgs with a clean Bitbucket VCS, for admins and developers alike."
+    }
+  ]
+}

@@ -26,7 +26,7 @@ Gather these (ask if not supplied):
 
 ## Prerequisites
 
-- `~/.opfocus-devops/bitbucket.json` present and valid (test with `python3 scripts/bb.py repo-exists <anything>`).
+- `~/.opfocus-devops/bitbucket.json` present and valid (test with `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/bb.py repo-exists <anything>`).
 - Every environment's `sf` org alias authenticated (`sf org display --target-org <alias>`).
 - A local working directory for the clone (ask the user; default `~/opfocus-repos/<slug>`).
 
@@ -39,14 +39,14 @@ Echo back the repo slug, environments → branches → orgs, baseline source, an
 ### 2. Create the Bitbucket repo
 
 ```
-python3 scripts/bb.py create-repo <slug>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/bb.py create-repo <slug>
 ```
 Idempotent — reports `exists` if it is already there. Report the repo URL.
 
 ### 3. Initialize the local clone
 
 ```
-git clone "$(python3 scripts/bb.py remote <slug>)" <workdir>
+git clone "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/bb.py remote <slug>)" <workdir>
 ```
 (The remote URL carries a short-lived token. For production this moves to a git credential helper; for sandbox testing an embedded token is fine.)
 
@@ -66,7 +66,7 @@ Retrieve the scoped manifest, keeping only the org's own **default-namespace** m
    - `**/staticresources/**` — static resources are not tracked (can be huge/binary).
    - `**/profiles/**` and `*.profile-meta.xml` — **profiles are never tracked or deployed.** They are impractical in VCS/CI-CD and OpFocus does not deploy them; use permission sets instead (best practice). This nudges consultants toward perm sets.
    - `**/<ns>__*` for each **authoritative** managed-package namespace from `sf package installed list --target-org <alias> --json` (the `SubscriberPackageNamespace` values). Managed metadata is read-only and can't be promoted.
-2. Retrieve: `sf project retrieve start --manifest skills/setup-client-repo/baseline-manifest.xml --target-org <baseline-source-alias>` (run from `<workdir>`).
+2. Retrieve: `sf project retrieve start --manifest ${CLAUDE_PLUGIN_ROOT}/skills/setup-client-repo/baseline-manifest.xml --target-org <baseline-source-alias>` (run from `<workdir>`).
 3. Report the final component count.
 
 **Never infer namespaces from file names.** In Salesforce `__` is the namespace separator, but a guessing heuristic produces false positives that collide with the org's own objects — e.g. an org object `Deployment__c` wrongly matches a guessed `Deployment` namespace and gets excluded, silently dropping the org's own work. Always use `sf package installed list` for the authoritative namespace set.
@@ -79,7 +79,7 @@ git -C <workdir> checkout -b <baseline-branch>
 git -C <workdir> add -A && git -C <workdir> commit -m "Baseline from <baseline source> (<date>)"
 # for each other environment branch:
 git -C <workdir> branch <branch>
-git -C <workdir> push -u "$(python3 scripts/bb.py remote <slug>)" --all
+git -C <workdir> push -u "$(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/bb.py remote <slug>)" --all
 ```
 
 ### 6. Write pipeline.yml

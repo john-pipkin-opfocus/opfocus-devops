@@ -42,7 +42,7 @@ The candidates are what the **source branch has that the target does not** — u
 - the source-tracked changes just captured, and
 - anything already committed to the source branch but not yet in the target branch (`git diff --name-only <target-branch>..<source-branch> -- force-app`).
 
-For each candidate record `type`, `fullName`, `origin` (`Org change` / `In source branch`), an **assurance** tier (High = objects, fields, flows, Apex, LWC/Aura — real work; Medium = companions: layouts, tabs, list views, FlexiPages), `autoCheck` (true for High), and a plain-English `summary`. Write `ui/change-selector/changes.json`.
+For each candidate record `type`, `fullName`, `origin` (`Org change` / `In source branch`), an **assurance** tier (High = objects, fields, flows, Apex, LWC/Aura — real work; Medium = companions: layouts, tabs, list views, FlexiPages), `autoCheck` (true for High), and a plain-English `summary`. Write `${CLAUDE_PLUGIN_ROOT}/ui/change-selector/changes.json`.
 
 ### 3. Review & choose (the selector UI)
 
@@ -53,7 +53,7 @@ The selector is a **review screen**, not just a checklist. For each candidate sh
 
 The diff is computed against the **target org's current version** of the component, so it's "what will actually change there." Deployment is still whole-file (no hunk selection) — the review is to approve each file's changes knowingly.
 
-Start `python3 ui/change-selector/server.py <port>` (background), open `http://127.0.0.1:<port>/` in the in-app browser, **then surface the Browser pane into the user's view** (show the `preview` pane) — opening the page and showing it are two separate steps; without the second, the user never sees it. The user reviews, checks/unchecks, clicks **Submit**; read `ui/change-selector/selection.json`.
+Start `python3 ${CLAUDE_PLUGIN_ROOT}/ui/change-selector/server.py <port>` (background), open `http://127.0.0.1:<port>/` in the in-app browser, **then surface the Browser pane into the user's view** (show the `preview` pane) — opening the page and showing it are two separate steps; without the second, the user never sees it. The user reviews, checks/unchecks, clicks **Submit**; read `${CLAUDE_PLUGIN_ROOT}/ui/change-selector/selection.json`.
 
 ### 4. Minimal structural scaffolding — never auto-add from another initiative
 

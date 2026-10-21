@@ -5,7 +5,7 @@ description: Deploy or verify the OpFocus DevOps tracking backend (the Client_Re
 
 # Set up the OpFocus DevOps backend
 
-This skill stands up the shared deployment database in **OpFocus's production org** (`sf` alias `OpFocus_Prod`). It deploys four custom objects that every team reads and writes: `Client_Repo__c`, `Org_Connection__c`, `Deployment__c`, and `Deployment_Component__c`. The metadata lives in this plugin under `salesforce/` (an `sf` project).
+This skill stands up the shared deployment database in **OpFocus's production org** (`sf` alias `OpFocus_Prod`). It deploys four custom objects that every team reads and writes: `Client_Repo__c`, `Org_Connection__c`, `Deployment__c`, and `Deployment_Component__c`. The metadata lives in this plugin under `${CLAUDE_PLUGIN_ROOT}/salesforce/` (an `sf` project).
 
 ## Before you start
 
@@ -15,7 +15,7 @@ This skill stands up the shared deployment database in **OpFocus's production or
 
 ## Steps
 
-Run every `sf` command from the plugin's `salesforce/` directory.
+Run every `sf` command from `${CLAUDE_PLUGIN_ROOT}/salesforce/`.
 
 1. **Validate first (no changes made).** Run a check-only deploy:
    ```
