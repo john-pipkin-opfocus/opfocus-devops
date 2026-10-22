@@ -5,7 +5,7 @@
   "plugins": [
     {
       "name": "opfocus-devops",
-      "source": ".",
+      "source": "./plugins/opfocus-devops",
       "description": "Salesforce DevOps for OpFocus — capture, promote, and track changes across client orgs with a clean Bitbucket VCS, for admins and developers alike."
     }
   ]
