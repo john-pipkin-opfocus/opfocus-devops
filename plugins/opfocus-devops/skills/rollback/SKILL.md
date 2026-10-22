@@ -43,9 +43,11 @@ The revert's diff is exactly the inverse of the original promote.
 Dry-run the mixed deploy against the target, check-only:
 ```bash
 sf project deploy start --manifest package.xml --post-destructive-changes destructiveChangesPost.xml \
-  --target-org <target-alias> --dry-run --test-level <RunLocalTests if Apex in set, else NoTestRun>
+  --target-org <target-alias> --dry-run --test-level <auto>
 ```
 Fix or stop on failure; don't proceed until clean.
+
+`<auto>` = the same rule as a promote: if the rollback set includes any `ApexClass`/`ApexTrigger`, use the target env's `test_level` from `pipeline.yml` (default `RunLocalTests`); otherwise `NoTestRun`. Use the same level for the dry-run and the real deploy.
 
 ## 6. Record, open the reverse PR, and gate
 
@@ -56,7 +58,7 @@ Fix or stop on failure; don't proceed until clean.
 ## 7. Execute
 
 1. Deploy for real (step 5's command without `--dry-run`).
-2. **On success:** set the rollback record `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`; **merge the reverse PR** (`bb.py merge-pr`); set the **original** deployment's `Status__c = Rolled Back`.
+2. **On success:** set the rollback record `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`; **merge the reverse PR** (`bb.py merge-pr`); set the **original** deployment's `Status__c = Rolled Back`. (A picklist value with a space needs inner quotes in `sf data update`: `--values "Status__c='Rolled Back'"`, or the CLI errors "Malformed key=value pair.")
 3. **On failure:** rollback record `Status__c = Failed`, leave the PR open, surface the errors.
 
 ## 8. Record components and report

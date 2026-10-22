@@ -79,7 +79,8 @@ Deletions are irreversible — err toward blocking and asking, never toward a si
 ### 5. Overwrite check, then validate
 
 - `sf project retrieve preview --target-org <target-alias>` — if a component in the closure also changed directly on the target, flag it and ask before overwriting.
-- **Validate first (always):** `sf project deploy start --source-dir <closure> --target-org <target-alias> --dry-run --test-level <from pipeline.yml>`. Report status/errors. Fix or de-select on failure; don't proceed to a real deploy until validation is clean.
+- **Pick the test level automatically.** Salesforce only needs Apex tests when the deployment contains Apex. So: if the closure includes **any `ApexClass` or `ApexTrigger`** (any `.cls`/`.trigger` under the selection), use the target env's `test_level` from `pipeline.yml` (default `RunLocalTests`); **otherwise `NoTestRun`**. This keeps metadata-only promotes fast and avoids running the org's whole test suite for, say, a layout or a label. Use the **same** level for the dry-run and the real deploy.
+- **Validate first (always):** `sf project deploy start --source-dir <closure> --target-org <target-alias> --dry-run --test-level <chosen above>`. Report status/errors. Fix or de-select on failure; don't proceed to a real deploy until validation is clean.
 
 ### 6. Open the pull request (one per deployment)
 
