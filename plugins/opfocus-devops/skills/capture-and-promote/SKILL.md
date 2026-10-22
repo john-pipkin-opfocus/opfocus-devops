@@ -81,14 +81,34 @@ Deletions are irreversible — err toward blocking and asking, never toward a si
 - `sf project retrieve preview --target-org <target-alias>` — if a component in the closure also changed directly on the target, flag it and ask before overwriting.
 - **Validate first (always):** `sf project deploy start --source-dir <closure> --target-org <target-alias> --dry-run --test-level <from pipeline.yml>`. Report status/errors. Fix or de-select on failure; don't proceed to a real deploy until validation is clean.
 
-### 6. Deploy (after validation + any required approval)
+### 6. The approval gate
 
-Re-run without `--dry-run`. For environments with `require_approval` in `pipeline.yml`, hold for approval on the `Deployment__c` record first. Production always validates first and needs an explicit "go".
+Read the **target** environment in `pipeline.yml`. If it has `require_approval: true` (Production always does), the promote is a **two-phase gate** — a human reviews and approves in Salesforce *before* anything deploys. Approval lives on the `Deployment__c` record, **not** a Bitbucket PR (consultants have no Bitbucket seats; everyone has a Salesforce login).
+
+**Phase 1 — Submit for approval (this run):**
+1. Validation (step 5) must already be clean.
+2. Create the `Deployment__c` record **now, before deploying** (and its `Deployment_Component__c` children with `Change_Summary__c` — step 7), with `Status__c = Validated` and `Approval_Status__c = Pending`.
+3. **Stop. Do not deploy.** Report: *"DEP-NNNNN validated and submitted for approval — Pending. A reviewer must set Approval Status to Approved on the record in Salesforce before it deploys."* Give the record link.
+
+**Phase 2 — Reviewer approves** (outside this tool): a reviewer opens the record, reads the component list + summaries + test results, and sets `Approval_Status__c` to **Approved** (or **Rejected**, with a reason in `Notes__c`).
+
+**Phase 3 — Execute the approved deployment** (a later run, when the consultant says to resume/deploy DEP-NNNNN):
+1. Query the record. **Approved** → continue. **Rejected** → stop and report the reason. **Pending** → report it's still waiting; do nothing.
+2. Re-validate if the branch moved since approval (otherwise proceed).
+3. Deploy for real (step 6b), then set `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`, and merge (step 7).
+
+The DB enforces this too: a `Deploy_Requires_Approval` validation rule blocks `Status__c = Deployed` unless `Approval_Status__c` is `Approved` or `Not Required` — so a mistaken manual edit can't skip the gate.
+
+Where the target env has **no** `require_approval`, set `Approval_Status__c = Not Required` and deploy straight through after validation.
+
+### 6b. Deploy
+
+Re-run step 5's command **without** `--dry-run`. Report the result; on failure set `Status__c = Failed` and surface the errors.
 
 ### 7. Merge the branch and record the deployment
 
-- Merge the source branch into the target branch so the branches mirror the orgs.
-- Create a `Deployment__c` (source/target orgs, branch, commit SHA, status Validated→Deployed, test results, who ran it) and a `Deployment_Component__c` per promoted component.
+- Merge the source branch into the target branch so the branches mirror the orgs. (For a gated promote, merge in Phase 3, after the deploy succeeds.)
+- Maintain the `Deployment__c` record (created at Phase 1 for gated promotes, or now for ungated ones): source/target orgs, branch, commit SHA, `Status__c` (Validated → Deployed), `Approval_Status__c`, test results, who ran it — plus a `Deployment_Component__c` per promoted component.
 - Set each component's **`Change_Summary__c`** to a plain-English description from `git diff <target-branch>..<source-branch>` for that file (layout: fields/sections added/removed/moved; field: the attribute changed); for a component new to the target, summarize its contents.
 
 ### 8. Report
