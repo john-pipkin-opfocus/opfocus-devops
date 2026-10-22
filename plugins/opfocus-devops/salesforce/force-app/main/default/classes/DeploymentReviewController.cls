@@ -13,7 +13,8 @@ public with sharing class DeploymentReviewController {
     @AuraEnabled(cacheable=true)
     public static List<Deployment__c> getMyPendingReviews() {
         return [
-            SELECT Id, Name, Branch__c, Status__c, CreatedDate, CreatedBy.Name
+            SELECT Id, Name, Branch__c, Status__c, CreatedDate, CreatedBy.Name,
+                   Project__c, Project__r.Name
             FROM Deployment__c
             WHERE Approval_Status__c = 'Pending'
               AND Reviewer__c = :UserInfo.getUserId()

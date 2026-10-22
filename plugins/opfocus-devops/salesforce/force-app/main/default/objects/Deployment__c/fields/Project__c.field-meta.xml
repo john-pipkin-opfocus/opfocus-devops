@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Project__c</fullName>
+    <label>Project</label>
+    <type>Lookup</type>
+    <referenceTo>project_cloud__Project__c</referenceTo>
+    <relationshipLabel>Deployments</relationshipLabel>
+    <relationshipName>Deployments</relationshipName>
+    <description>The Cloud Coach project this deployment belongs to. Chosen at submit time, defaulting to the most recent deployment's project for the same client repo.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <required>false</required>
+</CustomField>

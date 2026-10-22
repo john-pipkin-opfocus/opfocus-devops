@@ -20,7 +20,8 @@ export default class PendingReviews extends LightningElement {
                 name: d.Name,
                 url: `/${d.Id}`,
                 branch: d.Branch__c,
-                submittedBy: d.CreatedBy ? d.CreatedBy.Name : ''
+                submittedBy: d.CreatedBy ? d.CreatedBy.Name : '',
+                project: d.Project__r ? d.Project__r.Name : ''
             }));
             this.error = undefined;
         } else if (error) {

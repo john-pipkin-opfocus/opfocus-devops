@@ -15,6 +15,9 @@
                     <template for:each={rows} for:item="r">
                         <li key={r.id} class="slds-item slds-p-vertical_x-small">
                             <a href={r.url} target="_blank">{r.name}</a>
+                            <template lwc:if={r.project}>
+                                <span class="slds-text-body_small"> &middot; {r.project}</span>
+                            </template>
                             <div class="slds-text-body_small slds-text-color_weak">
                                 {r.branch} &middot; submitted by {r.submittedBy}
                             </div>

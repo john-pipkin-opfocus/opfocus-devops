@@ -3,6 +3,7 @@
     <label>DevOps Reviewer</label>
     <description>Marks a user as an OpFocus DevOps deployment reviewer. The skill offers only holders of this permission set as the Reviewer; manage the roster by assigning/unassigning it.</description>
     <hasActivationRequired>false</hasActivationRequired>
+    <fieldPermissions><field>Deployment__c.Project__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Reviewer__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Approval_Status__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Status__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
