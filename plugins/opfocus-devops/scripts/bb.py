@@ -20,6 +20,9 @@ Subcommands:
     remote SLUG           Print an authenticated https remote URL for git push/clone.
     create-repo SLUG      Create a private repo in the configured project (idempotent).
     repo-exists SLUG      Print "yes"/"no".
+    create-pr SLUG SRC DEST [TITLE] [DESC]   Open a PR SRC->DEST. Prints {id, html}.
+    merge-pr SLUG PR_ID [STRATEGY]           Merge a PR (default merge_commit). Prints {state}.
+    pr-status SLUG PR_ID                      Print {id, state, html} (OPEN/MERGED/DECLINED).
 """
 import json, os, sys, base64, subprocess, urllib.request, urllib.parse, urllib.error
 
@@ -77,7 +80,8 @@ def api(method, url, token, body=None):
         "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req) as r:
-            return json.load(r), None
+            raw = r.read()
+            return (json.loads(raw) if raw else {}), None
     except urllib.error.HTTPError as e:
         return None, (e.code, e.read().decode()[:400])
 
@@ -110,8 +114,41 @@ def main():
             sys.exit(1)
         print(json.dumps({"status": "created", "slug": slug,
                           "html": res.get("links", {}).get("html", {}).get("href")}))
+    elif cmd == "create-pr":
+        slug, source, dest = sys.argv[2], sys.argv[3], sys.argv[4]
+        title = sys.argv[5] if len(sys.argv) > 5 else f"Promote {source} to {dest}"
+        desc = sys.argv[6] if len(sys.argv) > 6 else ""
+        body = {"title": title, "description": desc,
+                "source": {"branch": {"name": source}},
+                "destination": {"branch": {"name": dest}},
+                "close_source_branch": True}
+        res, err = api("POST", f"{API}/repositories/{ws}/{slug}/pullrequests", token, body)
+        if err:
+            print(json.dumps({"status": "error", "code": err[0], "detail": err[1]}))
+            sys.exit(1)
+        print(json.dumps({"status": "created", "id": res["id"],
+                          "html": res.get("links", {}).get("html", {}).get("href")}))
+    elif cmd == "merge-pr":
+        slug, prid = sys.argv[2], sys.argv[3]
+        strategy = sys.argv[4] if len(sys.argv) > 4 else "merge_commit"
+        body = {"type": "pullrequest", "merge_strategy": strategy, "close_source_branch": True}
+        res, err = api("POST", f"{API}/repositories/{ws}/{slug}/pullrequests/{prid}/merge", token, body)
+        if err:
+            print(json.dumps({"status": "error", "code": err[0], "detail": err[1]}))
+            sys.exit(1)
+        print(json.dumps({"status": "merged", "id": prid, "state": (res or {}).get("state", "MERGED")}))
+    elif cmd == "pr-status":
+        slug, prid = sys.argv[2], sys.argv[3]
+        res, err = api("GET", f"{API}/repositories/{ws}/{slug}/pullrequests/{prid}", token)
+        if err:
+            print(json.dumps({"status": "error", "code": err[0], "detail": err[1]}))
+            sys.exit(1)
+        print(json.dumps({"id": prid, "state": res.get("state"),
+                          "html": res.get("links", {}).get("html", {}).get("href")}))
     else:
-        sys.exit("usage: bb.py [token | remote SLUG | repo-exists SLUG | create-repo SLUG]")
+        sys.exit("usage: bb.py [token | remote SLUG | repo-exists SLUG | create-repo SLUG | "
+                 "create-pr SLUG SRC DEST [TITLE] [DESC] | merge-pr SLUG PR_ID [STRATEGY] | "
+                 "pr-status SLUG PR_ID]")
 
 
 if __name__ == "__main__":

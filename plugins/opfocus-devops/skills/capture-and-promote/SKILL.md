@@ -81,39 +81,51 @@ Deletions are irreversible — err toward blocking and asking, never toward a si
 - `sf project retrieve preview --target-org <target-alias>` — if a component in the closure also changed directly on the target, flag it and ask before overwriting.
 - **Validate first (always):** `sf project deploy start --source-dir <closure> --target-org <target-alias> --dry-run --test-level <from pipeline.yml>`. Report status/errors. Fix or de-select on failure; don't proceed to a real deploy until validation is clean.
 
-### 6. The approval gate
+### 6. Open the pull request (one per deployment)
 
-Read the **target** environment in `pipeline.yml`. If it has `require_approval: true` (Production always does), the promote is a **two-phase gate** — a human reviews and approves in Salesforce *before* anything deploys. Approval lives on the `Deployment__c` record, **not** a Bitbucket PR (consultants have no Bitbucket seats; everyone has a Salesforce login).
+**Every** promote gets a PR, and the PR contains **exactly what deploys** — a per-promotion branch, not the whole source env branch (which would carry changes you didn't select). The PR is the audit trail and the merge mechanism; the **tool** opens and later merges it via the broker token (`${CLAUDE_PLUGIN_ROOT}/scripts/bb.py`), because consultants have no Bitbucket seats.
 
-**Phase 1 — Submit for approval (this run):**
-1. Validation (step 5) must already be clean.
-2. Create the `Deployment__c` record **now, before deploying** (and its `Deployment_Component__c` children with `Change_Summary__c` — step 7), with `Status__c = Validated` and `Approval_Status__c = Pending`.
-3. **Stop. Do not deploy.** Report: *"DEP-NNNNN validated and submitted for approval — Pending. A reviewer must set Approval Status to Approved on the record in Salesforce before it deploys."* Give the record link.
+1. Create the `Deployment__c` record now (source/target orgs, branch, commit SHA, test level) to get its number, **DEP-NNNNN**.
+2. Build the promotion branch off the **target** branch and apply only the selection:
+   ```bash
+   BB=${CLAUDE_PLUGIN_ROOT}/scripts/bb.py
+   REMOTE=$(python3 "$BB" remote <slug>)              # tokened URL — don't echo it
+   git fetch -q "$REMOTE" <target-branch>
+   git checkout -q -B promo/DEP-NNNNN FETCH_HEAD
+   git checkout <source-branch> -- <each selected path>   # adds/updates = source version
+   git rm <each confirmed-deleted path>                    # destructive selections, if any
+   git commit -m "DEP-NNNNN: <plain-English summary>"
+   git push -q "$REMOTE" promo/DEP-NNNNN
+   ```
+3. Open the PR and store its link:
+   ```bash
+   python3 "$BB" create-pr <slug> promo/DEP-NNNNN <target-branch> "DEP-NNNNN: <summary>" "<description>"
+   ```
+   Put the returned `html` URL in `Deployment__c.PR_URL__c`. The PR diff is now exactly the promoted set.
 
-**Phase 2 — Reviewer approves** (outside this tool): a reviewer opens the record, reads the component list + summaries + test results, and sets `Approval_Status__c` to **Approved** (or **Rejected**, with a reason in `Notes__c`).
+### 7. The approval gate
 
-**Phase 3 — Execute the approved deployment** (a later run, when the consultant says to resume/deploy DEP-NNNNN):
-1. Query the record. **Approved** → continue. **Rejected** → stop and report the reason. **Pending** → report it's still waiting; do nothing.
-2. Re-validate if the branch moved since approval (otherwise proceed).
-3. Deploy for real (step 6b), then set `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`, and merge (step 7).
+Read the **target** environment in `pipeline.yml`. Approval lives on the `Deployment__c` record, **not** the Bitbucket PR (no seats; everyone has a Salesforce login). The PR stays **open** until the deploy succeeds.
 
-The DB enforces this too: a `Deploy_Requires_Approval` validation rule blocks `Status__c = Deployed` unless `Approval_Status__c` is `Approved` or `Not Required` — so a mistaken manual edit can't skip the gate.
+- **`require_approval: true`** (Production always): set `Approval_Status__c = Pending` and **stop**. Report: *"DEP-NNNNN validated, PR #N opened, submitted for approval — Pending. A reviewer must set Approval Status to Approved in Salesforce before it deploys."* A reviewer then reads the record (components + `Change_Summary__c` + test results) and sets `Approval_Status__c` to **Approved** (or **Rejected** + a reason in `Notes__c`). **Resume** (a later run): query the record — **Approved** → continue to step 8; **Rejected** → close the PR, stop, report the reason; **Pending** → report it's still waiting.
+- **No `require_approval`**: set `Approval_Status__c = Not Required` and continue straight to step 8.
 
-Where the target env has **no** `require_approval`, set `Approval_Status__c = Not Required` and deploy straight through after validation.
+The DB enforces this: the `Deploy_Requires_Approval` validation rule blocks `Status__c = Deployed` unless `Approval_Status__c` is `Approved` or `Not Required`, so a mistaken manual edit can't skip the gate.
 
-### 6b. Deploy
+### 8. Deploy, then merge the PR
 
-Re-run step 5's command **without** `--dry-run`. Report the result; on failure set `Status__c = Failed` and surface the errors.
+1. Deploy for real — step 5's command **without** `--dry-run`.
+2. **On success:** set `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`, then **merge the PR** (closes the promo branch):
+   ```bash
+   python3 "$BB" merge-pr <slug> <PR_ID>
+   ```
+   The target branch now mirrors the target org.
+3. **On failure:** set `Status__c = Failed`, leave the PR **open**, and surface the errors.
 
-### 7. Merge the branch and record the deployment
+### 9. Record components and report
 
-- Merge the source branch into the target branch so the branches mirror the orgs. (For a gated promote, merge in Phase 3, after the deploy succeeds.)
-- Maintain the `Deployment__c` record (created at Phase 1 for gated promotes, or now for ungated ones): source/target orgs, branch, commit SHA, `Status__c` (Validated → Deployed), `Approval_Status__c`, test results, who ran it — plus a `Deployment_Component__c` per promoted component.
-- Set each component's **`Change_Summary__c`** to a plain-English description from `git diff <target-branch>..<source-branch>` for that file (layout: fields/sections added/removed/moved; field: the attribute changed); for a component new to the target, summarize its contents.
-
-### 8. Report
-
-Plainly: what was promoted, what dependencies were auto-added, what was skipped, the test outcome, and the `Deployment__c` link.
+- Write a `Deployment_Component__c` per promoted component, each with `Change_Summary__c` — a plain-English description from `git diff <target-branch>..<source-branch>` for that file (layout: fields/sections added/removed/moved; field: the attribute changed); for a component new to the target, summarize its contents.
+- Report plainly: what was promoted, any structural container auto-added, what was skipped, the test outcome, the **PR link**, and the `Deployment__c` link.
 
 ## Notes
 
