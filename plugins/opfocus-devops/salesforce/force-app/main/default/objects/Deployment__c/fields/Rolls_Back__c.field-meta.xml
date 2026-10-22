@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rolls_Back__c</fullName>
+    <label>Rolls Back</label>
+    <type>Lookup</type>
+    <referenceTo>Deployment__c</referenceTo>
+    <relationshipLabel>Rollbacks</relationshipLabel>
+    <relationshipName>Rollbacks</relationshipName>
+    <description>On a rollback deployment, points to the original deployment being reversed. Blank for normal promotes.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <required>false</required>
+</CustomField>
