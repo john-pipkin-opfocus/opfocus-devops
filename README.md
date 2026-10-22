@@ -4,18 +4,22 @@ A Claude Code plugin that lets every OpFocus consultant — admins and developer
 
 ## Install
 
-The plugin lives in a private Bitbucket repo, so Claude Code uses your **existing git credentials** (it never prompts). Each consultant installs once:
+The plugin is distributed from a **public GitHub repo** (it holds no secrets — the Bitbucket OAuth secret lives only in the prod-org Named Credential), so there's nothing to authenticate and consultants don't need any repo account.
 
-1. **Prime your Bitbucket credential** (so the non-interactive clone can authenticate):
-   ```bash
-   git ls-remote https://bitbucket.org/opfocusdevtem/opfocus-devops.git
-   ```
-   (Enter your Bitbucket credentials if prompted; your credential helper stores them.)
-2. **Add the marketplace and install**, in a Claude Code session:
-   ```
-   /plugin marketplace add https://bitbucket.org/opfocusdevtem/opfocus-devops.git
-   /plugin install opfocus-devops@opfocus-marketplace
-   ```
+**In the Claude desktop app (Code tab):** click the **+** next to the prompt box → **Add plugins** → paste the marketplace URL below → **Sync**, then install **opfocus-devops**.
+
+**Or from the terminal / VS Code** — in a Claude Code session:
+
+```
+/plugin marketplace add https://github.com/john-pipkin-opfocus/opfocus-devops.git
+/plugin install opfocus-devops@opfocus-marketplace
+```
+
+(Shell equivalent: `claude plugin install opfocus-devops --marketplace https://github.com/john-pipkin-opfocus/opfocus-devops.git`.)
+
+Access to the private **client code repos** is handled separately, at runtime, by the token broker — not by any per-consultant Bitbucket credential. This GitHub repo is the public **distribution** mirror; active development lives in the private Bitbucket repo.
+
+> Plugins don't load in cloud sessions (`claude.ai/code`) or under WSL — use a local desktop-app, terminal, or VS Code session.
 
 The three skills then become available — invoke them by asking in plain language, or directly as `/opfocus-devops:<skill>`.
 
