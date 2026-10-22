@@ -18,11 +18,11 @@
                 <behavior>Edit</behavior>
                 <field>Component_Name__c</field>
             </layoutItems>
-                        <layoutItems>
-                    <behavior>Edit</behavior>
-                    <field>Change_Summary__c</field>
-                </layoutItems>
-</layoutColumns>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Change_Summary__c</field>
+            </layoutItems>
+        </layoutColumns>
         <layoutColumns>
             <layoutItems>
                 <behavior>Required</behavior>
@@ -58,6 +58,8 @@
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>
         <editHeading>false</editHeading>
+        <layoutColumns/>
+        <layoutColumns/>
         <layoutColumns/>
         <style>CustomLinks</style>
     </layoutSections>
