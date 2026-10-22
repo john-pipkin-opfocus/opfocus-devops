@@ -87,7 +87,9 @@ Deletions are irreversible — err toward blocking and asking, never toward a si
 **Every** promote gets a PR, and the PR contains **exactly what deploys** — a per-promotion branch, not the whole source env branch (which would carry changes you didn't select). The PR is the audit trail and the merge mechanism; the **tool** opens and later merges it via the broker token (`${CLAUDE_PLUGIN_ROOT}/scripts/bb.py`), because consultants have no Bitbucket seats.
 
 1. Create the `Deployment__c` record now (source/target orgs, branch, commit SHA, test level) to get its number, **DEP-NNNNN**.
-   - **Which Cloud Coach project?** Set `Project__c` (lookup to `project_cloud__Project__c`) so the deployment ties back to the client work. Default to the project on the most recent deployment for this repo — `SELECT Project__c, Project__r.Name FROM Deployment__c WHERE Client_Repo__c = :repoId AND Project__c != null ORDER BY CreatedDate DESC LIMIT 1` — and confirm it with the user (offer to pick a different `project_cloud__Project__c`, e.g. by name for the client's account). If there's no prior project, ask.
+   - **Which Cloud Coach project?** Set `Project__c` (lookup to `project_cloud__Project__c`) so the deployment ties back to the client work. **Only offer projects that are active** — `Project_Status_Custom__c = 'In Progress'`:
+     - **Default** to the repo's most recent deployment's project *if it's still In Progress*: `SELECT Project__c, Project__r.Name FROM Deployment__c WHERE Client_Repo__c = :repoId AND Project__c != null AND Project__r.Project_Status_Custom__c = 'In Progress' ORDER BY CreatedDate DESC LIMIT 1`. Confirm it with the user.
+     - **A different one / no default:** search within active projects — `SELECT Id, Name FROM project_cloud__Project__c WHERE Project_Status_Custom__c = 'In Progress' AND Name LIKE '%<typed>%' ORDER BY Name` — and disambiguate if more than one. If the user means a project that isn't In Progress, say so (it's not an active project) and confirm before using it.
 2. Build the promotion branch off the **target** branch and apply only the selection:
    ```bash
    BB=${CLAUDE_PLUGIN_ROOT}/scripts/bb.py
