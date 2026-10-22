@@ -51,7 +51,7 @@ Fix or stop on failure; don't proceed until clean.
 
 1. Create a **rollback `Deployment__c`**: `Rolls_Back__c` = the original record, source/target, `Status__c = Validated`, `Test_Level__c`.
 2. Push `rollback/DEP-NNNNN` and open the PR into the target branch (`bb.py create-pr`); store `PR_URL__c`.
-3. **Approval gate (same as a promote):** if the target env has `require_approval: true`, set `Approval_Status__c = Pending` and **stop** — *"Rollback of DEP-NNNNN validated, PR #N opened, Pending approval."* A reviewer approves in Salesforce; resume when `Approved`. Otherwise `Approval_Status__c = Not Required` and continue. The `Deploy_Requires_Approval` validation rule enforces it.
+3. **Approval gate (same as a promote):** if the target env has `require_approval: true`, pick a reviewer (ask the user to choose a `DevOps_Reviewer` permission-set holder; set `Reviewer__c`), set `Approval_Status__c = Pending`, and **stop** — *"Rollback of DEP-NNNNN validated, PR #N opened, submitted to <Reviewer> — Pending."* Setting the reviewer + Pending emails them automatically (the `Notify_Deployment_Reviewer` flow). A reviewer approves in Salesforce; resume when `Approved`. Otherwise `Approval_Status__c = Not Required` and continue. The `Deploy_Requires_Approval` validation rule enforces it.
 
 ## 7. Execute
 

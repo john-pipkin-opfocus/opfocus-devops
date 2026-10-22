@@ -48,6 +48,7 @@
     <fieldPermissions><field>Deployment__c.Notes__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.PR_URL__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Source_Org__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
+    <fieldPermissions><field>Deployment__c.Reviewer__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Rolls_Back__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Status__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Target_Org__c</field><readable>true</readable><editable>true</editable></fieldPermissions>

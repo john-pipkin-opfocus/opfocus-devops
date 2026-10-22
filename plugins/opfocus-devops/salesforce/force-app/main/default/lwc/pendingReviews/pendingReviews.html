@@ -1,0 +1,33 @@
+<!--
+  @author       John Pipkin
+  @company      OpFocus
+  @date         10/22/2026
+  @description  Markup for the "Deployments awaiting your review" Home-page component.
+-->
+<template>
+    <lightning-card icon-name="standard:approval">
+        <span slot="title">Deployments awaiting your review</span>
+        <lightning-badge slot="actions" label={count}></lightning-badge>
+        <div class="slds-p-horizontal_medium slds-p-bottom_small">
+            <!-- Pending reviews assigned to the running user -->
+            <template lwc:if={hasRows}>
+                <ul class="slds-has-dividers_bottom-space">
+                    <template for:each={rows} for:item="r">
+                        <li key={r.id} class="slds-item slds-p-vertical_x-small">
+                            <a href={r.url} target="_blank">{r.name}</a>
+                            <div class="slds-text-body_small slds-text-color_weak">
+                                {r.branch} &middot; submitted by {r.submittedBy}
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+            <!-- Empty state -->
+            <template lwc:else>
+                <p class="slds-text-color_weak slds-p-vertical_small">
+                    No deployments awaiting your review.
+                </p>
+            </template>
+        </div>
+    </lightning-card>
+</template>

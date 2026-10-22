@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <description>When a deployment becomes Pending approval with a Reviewer set, email the reviewer.</description>
+    <environments>Default</environments>
+    <formulas>
+        <name>SubjectText</name>
+        <dataType>String</dataType>
+        <expression>"Deployment " &amp; {!$Record.Name} &amp; " needs your review"</expression>
+    </formulas>
+    <interviewLabel>Notify Deployment Reviewer {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Notify Deployment Reviewer</label>
+    <processType>AutoLaunchedFlow</processType>
+    <actionCalls>
+        <name>Send_Email</name>
+        <label>Send Email</label>
+        <locationX>176</locationX>
+        <locationY>288</locationY>
+        <actionName>emailSimple</actionName>
+        <actionType>emailSimple</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>emailAddresses</name>
+            <value><elementReference>$Record.Reviewer__r.Email</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailSubject</name>
+            <value><elementReference>SubjectText</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailBody</name>
+            <value><elementReference>BodyTemplate</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>sendRichBody</name>
+            <value><booleanValue>false</booleanValue></value>
+        </inputParameters>
+    </actionCalls>
+    <textTemplates>
+        <name>BodyTemplate</name>
+        <isViewedAsPlainText>true</isViewedAsPlainText>
+        <text>Hi {!$Record.Reviewer__r.FirstName},
+
+A deployment is waiting for your review and approval.
+
+  Deployment: {!$Record.Name}
+  Branch: {!$Record.Branch__c}
+  Submitted by: {!$Record.CreatedBy.Name}
+
+Open the Deployment record in Salesforce (or the "Deployments awaiting your review" list on your Home page), review the components, and set Approval Status to Approved or Rejected.
+
+— OpFocus DevOps</text>
+    </textTemplates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Send_Email</targetReference>
+        </connector>
+        <doesRequireRecordChangedToMeetCriteria>true</doesRequireRecordChangedToMeetCriteria>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Approval_Status__c</field>
+            <operator>EqualTo</operator>
+            <value><stringValue>Pending</stringValue></value>
+        </filters>
+        <filters>
+            <field>Reviewer__c</field>
+            <operator>IsNull</operator>
+            <value><booleanValue>false</booleanValue></value>
+        </filters>
+        <object>Deployment__c</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>
