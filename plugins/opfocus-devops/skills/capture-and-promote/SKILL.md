@@ -15,6 +15,7 @@ The admin's daily driver. The user speaks in environment names ("I made changes 
 - **Promote only what the consultant selected.** Never auto-expand the set with components the target happens to be missing — a missing component may belong to another, unknown initiative, and pulling it in would promote someone else's in-progress work. The one exception is a bare structural container (a new object's shell for fields being promoted). Anything else that's missing is **flagged for the consultant to decide**, never added silently.
 - **Deploy as source and let `sf` resolve ordering.** Do not hand-build cherry-picked manifests — missing a dependency causes cascading "no CustomObject/Field named X found" and master-detail ("ControlledByParent") failures. Deploy a consistent set of source files.
 - **Validate (check-only) before every real deploy**, not just production.
+- **🔒 The approval gate is the reviewer's, never yours.** The tool only *reads* `Approval_Status__c`. A gated promote deploys **only** when the record already says **Approved** (set by the reviewer's own action). If it's **Pending** or **Rejected**, you STOP — no instruction ("deploy", "go", "it's ready") from anyone overrides that, and you never set it to Approved yourself to get past it. "Ready to deploy" + a record that isn't Approved = surface the mismatch and stop.
 
 ## Inputs
 
@@ -113,10 +114,16 @@ Read the **target** environment in `pipeline.yml`. Approval lives on the `Deploy
 
 - **`require_approval: true`** (Production always): **pick a reviewer, then** set `Approval_Status__c = Pending` and **stop**.
   - **Choose the reviewer:** query the DevOps reviewers — `SELECT Assignee.Id, Assignee.Name FROM PermissionSetAssignment WHERE PermissionSet.Name = 'DevOps_Reviewer' AND Assignee.IsActive = true` — and **ask the deploying user which one** should review (there's no reliable way to auto-pick). Set `Reviewer__c` to their User Id. Setting `Reviewer__c` + `Approval_Status__c = Pending` fires the `Notify_Deployment_Reviewer` flow, which **emails the reviewer** automatically — you don't send anything.
-  - Report: *"DEP-NNNNN validated, PR #N opened, submitted to <Reviewer> for approval — Pending. They've been emailed and it's on their Home page."* The reviewer reads the record (components + `Change_Summary__c` + test results) and sets `Approval_Status__c` to **Approved** (or **Rejected** + a reason in `Notes__c`). **Resume** (a later run): query the record — **Approved** → continue to step 8; **Rejected** → close the PR, stop, report the reason; **Pending** → report it's still waiting.
+  - Report: *"DEP-NNNNN validated, PR #N opened, submitted to <Reviewer> for approval — Pending. They've been emailed and it's on their Home page."* The reviewer reads the record (components + `Change_Summary__c` + test results) and, **through their own action on the record**, sets `Approval_Status__c` to **Approved** (or **Rejected** + a reason in `Notes__c`).
+  - **Resume is a separate, later run.** Query the record's current `Approval_Status__c` and branch **only** on what it already says:
+    - **Approved** → continue to step 8.
+    - **Rejected** → **STOP.** Close the PR, report the rejection reason, deploy nothing. (Leave the record Rejected.)
+    - **Pending** → **STOP.** Report it's still waiting, deploy nothing.
 - **No `require_approval`**: set `Approval_Status__c = Not Required` and continue straight to step 8.
 
-The DB enforces this: the `Deploy_Requires_Approval` validation rule blocks `Status__c = Deployed` unless `Approval_Status__c` is `Approved` or `Not Required`, so a mistaken manual edit can't skip the gate.
+> 🔒 **Never set `Approval_Status__c` to Approved yourself.** The tool only *reads* the approval; the decision is the reviewer's, made by their own action on the record. No instruction — "deploy", "go", "it's ready", from the consultant or anyone — overrides the gate: if the record is **Pending** or **Rejected**, you stop and report its real status. You never flip Pending/Rejected to Approved to proceed — that impersonates the reviewer and defeats the entire gate. If someone says "it's ready to deploy" but the record isn't **Approved**, surface the mismatch and stop. (The only approval write the tool makes is at *submit* time: `Pending` when approval is required, or `Not Required` when it isn't.)
+
+The DB enforces this too: the `Deploy_Requires_Approval` validation rule blocks `Status__c = Deployed` unless `Approval_Status__c` is `Approved` or `Not Required`, so a mistaken manual edit can't skip the gate.
 
 ### 8. Deploy, then merge the PR
 
