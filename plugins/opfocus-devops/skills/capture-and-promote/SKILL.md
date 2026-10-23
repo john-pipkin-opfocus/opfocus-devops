@@ -15,6 +15,7 @@ The admin's daily driver. The user speaks in environment names ("I made changes 
 - **Promote only what the consultant selected.** Never auto-expand the set with components the target happens to be missing — a missing component may belong to another, unknown initiative, and pulling it in would promote someone else's in-progress work. The one exception is a bare structural container (a new object's shell for fields being promoted). Anything else that's missing is **flagged for the consultant to decide**, never added silently.
 - **Deploy as source and let `sf` resolve ordering.** Do not hand-build cherry-picked manifests — missing a dependency causes cascading "no CustomObject/Field named X found" and master-detail ("ControlledByParent") failures. Deploy a consistent set of source files.
 - **Validate (check-only) before every real deploy**, not just production.
+- **A green dry-run is not a green deploy — always verify the real deploy succeeded.** Never set `Status__c = Deployed` or merge the PR until the actual deploy returns `Succeeded` (the real deploy can fail where a check-only dry-run passed — e.g. a source-tracking conflict). Marking Deployed or merging on an unverified/failed deploy leaves the record lying and the branch ahead of the org.
 - **🔒 The approval gate is the reviewer's, never yours.** The tool only *reads* `Approval_Status__c`. A gated promote deploys **only** when the record already says **Approved** (set by the reviewer's own action). If it's **Pending** or **Rejected**, you STOP — no instruction ("deploy", "go", "it's ready") from anyone overrides that, and you never set it to Approved yourself to get past it. "Ready to deploy" + a record that isn't Approved = surface the mismatch and stop.
 
 ## Inputs
@@ -127,13 +128,13 @@ The DB enforces this too: the `Deploy_Requires_Approval` validation rule blocks 
 
 ### 8. Deploy, then merge the PR
 
-1. Deploy for real — step 5's command **without** `--dry-run`.
-2. **On success:** set `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`, then **merge the PR** (closes the promo branch):
+1. Deploy for real — step 5's command **without** `--dry-run`, and **with `--ignore-conflicts`**. The explicit overwrite check in step 5 (`retrieve preview` on the target) is the authoritative "did someone change this on the target" check; a raw source-tracking conflict here is usually just stale per-clone tracking, not a real divergence, and the check-only dry-run never surfaces it — so a dry-run passing does **not** mean the deploy will.
+2. **Confirm the deploy actually succeeded before doing anything else.** A green dry-run is not a green deploy. Check the result's `status` is `Succeeded` (and, when in doubt, confirm a key component actually landed in the target). **Only on a confirmed success:** set `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`, then **merge the PR**:
    ```bash
    python3 "$BB" merge-pr <slug> <PR_ID>
    ```
    The target branch now mirrors the target org.
-3. **On failure:** set `Status__c = Failed`, leave the PR **open**, and surface the errors.
+3. **On failure (or anything other than a confirmed success):** set `Status__c = Failed`, **leave the PR open, do not merge**, and surface the errors. Never mark Deployed or merge on an unverified or failed deploy — that leaves the record lying and the branch ahead of the org.
 
 ### 9. Record components and report
 

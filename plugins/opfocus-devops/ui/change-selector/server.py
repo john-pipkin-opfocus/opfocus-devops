@@ -4,7 +4,7 @@
 GET  /                -> index.html (and any static asset in this dir)
 POST /submit          -> writes selection.json next to this script, then responds {ok:true}
 """
-import http.server, socketserver, json, os, sys
+import http.server, socketserver, json, os, sys, threading
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8787
@@ -36,6 +36,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(b'{"ok":true}')
+            # Stop the server once a selection is in, so the caller is notified the
+            # moment the user submits (shutdown must run off the serve_forever thread).
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
         else:
             self.send_error(404)
 

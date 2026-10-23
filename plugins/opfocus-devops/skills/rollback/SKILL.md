@@ -58,9 +58,9 @@ Fix or stop on failure; don't proceed until clean.
 
 ## 7. Execute
 
-1. Deploy for real (step 5's command without `--dry-run`).
-2. **On success:** set the rollback record `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`; **merge the reverse PR** (`bb.py merge-pr`); set the **original** deployment's `Status__c = Rolled Back`. (A picklist value with a space needs inner quotes in `sf data update`: `--values "Status__c='Rolled Back'"`, or the CLI errors "Malformed key=value pair.")
-3. **On failure:** rollback record `Status__c = Failed`, leave the PR open, surface the errors.
+1. Deploy for real (step 5's command without `--dry-run`, with `--ignore-conflicts`).
+2. **Confirm the deploy returned `Succeeded` before anything else** (a green dry-run is not a green deploy). **Only then:** set the rollback record `Status__c = Deployed`, stamp `Deployed_By__c`/`Deployed_At__c`; **merge the reverse PR** (`bb.py merge-pr`); set the **original** deployment's `Status__c = Rolled Back`. (A picklist value with a space needs inner quotes in `sf data update`: `--values "Status__c='Rolled Back'"`, or the CLI errors "Malformed key=value pair.")
+3. **On failure (or anything but a confirmed success):** rollback record `Status__c = Failed`, leave the PR open (do not merge), surface the errors.
 
 ## 8. Record components and report
 
