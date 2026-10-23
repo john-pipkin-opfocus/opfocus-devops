@@ -78,9 +78,26 @@ A component **deleted** in the source becomes a destructive change on the target
 
 Deletions are irreversible — err toward blocking and asking, never toward a silent delete.
 
-### 5. Overwrite check, then validate
+### 5. Drift check (target branch vs target org), then validate
 
-- `sf project retrieve preview --target-org <target-alias>` — if a component in the closure also changed directly on the target, flag it and ask before overwriting.
+Before deploying, check whether the **target org** has out-of-band changes — components changed directly in the org (by the client or another consultant) that the target branch doesn't have. **Never blindly `--ignore-conflicts`: that silently overwrites those changes** (and destroys the fact that they existed). For each component in the promote set, compare three versions — **base** = the component on the **target branch** (what VCS expects there), **ours** = the version you're **promoting**, **theirs** = the component's **current version in the target org**:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/detect_drift.py --target-org <target-alias> --branch-ref <target-branch> --metadata "<Type:Name ...>" -- <selected source paths...>
+```
+
+It retrieves the org versions and classifies each component. Handle by tier:
+
+- **No drift** (`theirs == base`): deploy normally.
+- **Drift on a component you're *not* changing** (`ours == base`): you won't clobber it, but **alert** the consultant ("the target has N uncommitted change(s): …") and **offer to capture them into VCS** so the branch reflects reality and they can flow down to Dev. Don't block the promote.
+- **Drift that overlaps what you're promoting** (`ours != base` *and* `theirs != base` on the same component):
+  - **Code (Apex/LWC/Aura), cleanly mergeable** (the 3-way merge has no conflicts) → show the consultant the **merged result**, get their OK, deploy the merge, and **capture the org's change back into the target branch + flag it to back-port to Dev** so it isn't lost.
+  - **Conflicting lines, or XML metadata** (objects, layouts, FlexiPages) → **STOP.** Show both versions; the consultant resolves manually (usually: pull the org change into Dev, reconcile, re-promote). Never auto-combine.
+
+Only once drift is checked and resolved do you deploy. After an explicit clean drift check, `--ignore-conflicts` on the deploy is safe — the authoritative check has already run; it just suppresses stale per-clone source-tracking noise.
+
+> **Golden rule: never silently overwrite an org change. Always preserve it in VCS and flow it down to Dev — a change that lives only in a higher env is a time bomb.**
+
 - **Pick the test level automatically.** Salesforce only needs Apex tests when the deployment contains Apex. So: if the closure includes **any `ApexClass` or `ApexTrigger`** (any `.cls`/`.trigger` under the selection), use the target env's `test_level` from `pipeline.yml` (default `RunLocalTests`); **otherwise `NoTestRun`**. This keeps metadata-only promotes fast and avoids running the org's whole test suite for, say, a layout or a label. Use the **same** level for the dry-run and the real deploy.
 - **Validate first (always):** `sf project deploy start --source-dir <closure> --target-org <target-alias> --dry-run --test-level <chosen above>`. Report status/errors. Fix or de-select on failure; don't proceed to a real deploy until validation is clean.
 
