@@ -11,3 +11,4 @@
 **/change-selector/package.xml
 # 3-way merge output from detect_drift
 *.merged
+demo/
