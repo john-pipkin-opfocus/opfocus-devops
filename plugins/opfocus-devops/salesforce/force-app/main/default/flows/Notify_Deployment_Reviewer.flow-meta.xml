@@ -11,7 +11,7 @@
     <formulas>
         <name>RecordLink</name>
         <dataType>String</dataType>
-        <expression>"https://opfocus--devops.sandbox.my.salesforce.com/lightning/r/Deployment__c/" &amp; {!$Record.Id} &amp; "/view"</expression>
+        <expression>LEFT({!$Api.Partner_Server_URL_240}, FIND(".salesforce.com", {!$Api.Partner_Server_URL_240}) + 14) &amp; "/lightning/r/Deployment__c/" &amp; {!$Record.Id} &amp; "/view"</expression>
     </formulas>
     <interviewLabel>Notify Deployment Reviewer {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Notify Deployment Reviewer</label>
