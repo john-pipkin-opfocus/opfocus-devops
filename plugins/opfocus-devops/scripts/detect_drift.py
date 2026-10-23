@@ -84,6 +84,8 @@ def main():
             status = "new"
         elif base is not None and theirs == base:
             status = "clean"
+        elif ours is not None and ours == theirs:
+            status = "clean"                 # source and org already agree (converged)
         elif ours is not None and base is not None and ours == base:
             status = "unrelated_drift"      # org changed it; we are not
         else:

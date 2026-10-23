@@ -96,6 +96,14 @@ It retrieves the org versions and classifies each component. Handle by tier:
 
 Only once drift is checked and resolved do you deploy. After an explicit clean drift check, `--ignore-conflicts` on the deploy is safe — the authoritative check has already run; it just suppresses stale per-clone source-tracking noise.
 
+**Back-capture — whenever you accept an org change** (a merged overlap, or a captured unrelated drift), don't leave it living only in the higher env. The **resolved content** is what the target should now hold — for a merge, the `.merged` file `detect_drift.py` wrote; for unrelated drift, the target org's version. Preserve it and flow it **down** so the next promote can't re-clobber it:
+
+1. **Target branch** — commit the resolved component on the target branch. (For a mergeable overlap this is the same content you deploy to the target; for unrelated drift it's the org's version.)
+2. **Back-port down to Dev** — write the same resolved content into the **dev branch**, commit, push, and **deploy it to the Dev org** (`--ignore-conflicts`, test level by the Apex rule). For a path longer than Dev→target (e.g. Dev→Stage→Prod with the drift in Prod), carry it through each intermediate branch *and* org between the target and Dev, so every lower env agrees.
+3. **Re-check** — re-run `detect_drift.py` for that component; it should now report **clean** (org, branches, and Dev all agree). Record the back-capture on the `Deployment__c` (a `Deployment_Component__c` with a summary like "captured an out-of-band Stage change back to Dev").
+
+Back-capture is the mirror of a promote: a promote flows a change **up**; back-capture flows an out-of-band change **down** to the source of truth so it's never lost.
+
 > **Golden rule: never silently overwrite an org change. Always preserve it in VCS and flow it down to Dev — a change that lives only in a higher env is a time bomb.**
 
 - **Pick the test level automatically.** Salesforce only needs Apex tests when the deployment contains Apex. So: if the closure includes **any `ApexClass` or `ApexTrigger`** (any `.cls`/`.trigger` under the selection), use the target env's `test_level` from `pipeline.yml` (default `RunLocalTests`); **otherwise `NoTestRun`**. This keeps metadata-only promotes fast and avoids running the org's whole test suite for, say, a layout or a label. Use the **same** level for the dry-run and the real deploy.
