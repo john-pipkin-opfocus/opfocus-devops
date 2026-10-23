@@ -7,5 +7,7 @@
 **/.sfdx/
 
 # change-selector runtime artifacts (generated per promote)
-ui/change-selector/selection.json
-ui/change-selector/package.xml
+**/change-selector/selection.json
+**/change-selector/package.xml
+# 3-way merge output from detect_drift
+*.merged
