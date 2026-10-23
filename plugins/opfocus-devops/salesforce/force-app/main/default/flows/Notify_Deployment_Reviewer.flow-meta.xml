@@ -1,16 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>62.0</apiVersion>
-    <description>When a deployment becomes Pending approval with a Reviewer set, email the reviewer.</description>
+    <description>When a deployment becomes Pending approval with a Reviewer set, email the reviewer with a link to the record.</description>
     <environments>Default</environments>
     <formulas>
         <name>SubjectText</name>
         <dataType>String</dataType>
         <expression>"Deployment " &amp; {!$Record.Name} &amp; " needs your review"</expression>
     </formulas>
+    <formulas>
+        <name>RecordLink</name>
+        <dataType>String</dataType>
+        <expression>"https://opfocus--devops.sandbox.my.salesforce.com/lightning/r/Deployment__c/" &amp; {!$Record.Id} &amp; "/view"</expression>
+    </formulas>
     <interviewLabel>Notify Deployment Reviewer {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Notify Deployment Reviewer</label>
     <processType>AutoLaunchedFlow</processType>
+    <recordLookups>
+        <name>Get_Submitter</name>
+        <label>Get Submitter</label>
+        <locationX>176</locationX>
+        <locationY>180</locationY>
+        <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
+        <connector>
+            <targetReference>Send_Email</targetReference>
+        </connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Id</field>
+            <operator>EqualTo</operator>
+            <value><elementReference>$Record.CreatedById</elementReference></value>
+        </filters>
+        <getFirstRecordOnly>true</getFirstRecordOnly>
+        <object>User</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
     <actionCalls>
         <name>Send_Email</name>
         <label>Send Email</label>
@@ -43,11 +67,15 @@
 
 A deployment is waiting for your review and approval.
 
-  Deployment: {!$Record.Name}
-  Branch: {!$Record.Branch__c}
-  Submitted by: {!$Record.CreatedBy.Name}
+  Deployment:   {!$Record.Name}
+  Project:      {!$Record.Project__r.Name}
+  Branch:       {!$Record.Branch__c}
+  Submitted by: {!Get_Submitter.Name}
 
-Open the Deployment record in Salesforce (or the "Deployments awaiting your review" list on your Home page), review the components, and set Approval Status to Approved or Rejected.
+Open the record to review the components and set Approval Status to Approved or Rejected:
+{!RecordLink}
+
+(It's also on the "Deployments awaiting your review" list on your Home page.)
 
 — OpFocus DevOps</text>
     </textTemplates>
@@ -55,7 +83,7 @@ Open the Deployment record in Salesforce (or the "Deployments awaiting your revi
         <locationX>50</locationX>
         <locationY>0</locationY>
         <connector>
-            <targetReference>Send_Email</targetReference>
+            <targetReference>Get_Submitter</targetReference>
         </connector>
         <doesRequireRecordChangedToMeetCriteria>true</doesRequireRecordChangedToMeetCriteria>
         <filterLogic>and</filterLogic>
