@@ -26,6 +26,7 @@
         <allowCreate>true</allowCreate><allowRead>true</allowRead><allowEdit>true</allowEdit>
         <allowDelete>true</allowDelete><viewAllRecords>true</viewAllRecords><modifyAllRecords>true</modifyAllRecords>
     </objectPermissions>
+    <fieldPermissions><field>Client_Repo__c.Account__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Client_Repo__c.Active__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Client_Repo__c.Bitbucket_Repo_Slug__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Client_Repo__c.Bitbucket_Repo_URL__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
