@@ -37,6 +37,7 @@
     <fieldPermissions><field>Org_Connection__c.Org_Alias__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Org_Connection__c.Org_Id__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Org_Connection__c.Org_Type__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
+    <fieldPermissions><field>Org_Connection__c.Promotes_To__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Org_Connection__c.Promotion_Order__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Org_Connection__c.Source_Tracking_Enabled__c</field><readable>true</readable><editable>true</editable></fieldPermissions>
     <fieldPermissions><field>Deployment__c.Approval_Status__c</field><readable>true</readable><editable>true</editable></fieldPermissions>

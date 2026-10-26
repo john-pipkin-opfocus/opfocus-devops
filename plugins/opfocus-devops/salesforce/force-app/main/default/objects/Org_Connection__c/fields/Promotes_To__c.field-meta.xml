@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Promotes_To__c</fullName>
+    <label>Promotes To</label>
+    <type>Lookup</type>
+    <referenceTo>Org_Connection__c</referenceTo>
+    <relationshipLabel>Upstream Environments</relationshipLabel>
+    <relationshipName>Upstream_Environments</relationshipName>
+    <description>Optional override of the next promotion target for this environment. Leave blank to use the default (the next-higher Promotion Level). Set it only for exceptions: a hotfix org that promotes straight to Production, or a level that fans out to more than one target. Must point to another environment in the same client repo.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <required>false</required>
+    <unique>false</unique>
+</CustomField>

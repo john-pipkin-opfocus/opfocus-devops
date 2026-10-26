@@ -20,8 +20,13 @@ The admin's daily driver. The user speaks in environment names ("I made changes 
 
 ## Inputs
 
-- **Client repo** + its `.opfocus/pipeline.yml` (environments → branch → `sf` alias, promotion path). If missing, the repo isn't set up — send the user to `setup-client-repo`.
-- **Source** environment (where changes were made) and **target** (default: next in the promotion path).
+- **Client repo** + its `.opfocus/pipeline.yml` (each environment has a branch, `sf` alias, and a **level**). If missing, the repo isn't set up — send the user to `setup-client-repo`.
+- **Source** environment (where changes were made) and **target** — resolve the target by level, not a fixed path:
+  - **Default target = the environment at the next level up** from the source (e.g. a Dev at level 1 promotes to the UAT at level 2). Clients often have **several orgs on the same level** (CRL has multiple Dev orgs all feeding one UAT) — they're peers, and each promotes up to the same next-level target.
+  - **Override:** if the source org has a `promotes_to` set, use that target instead (hotfix-straight-to-Prod, etc.).
+  - **Fan-out:** if more than one environment sits at the next level up and there's no `promotes_to`, **ask the consultant which target** — don't guess.
+  - **Never promote sideways or down.** A target at the same level as the source (e.g. Dev2 → Dev), or below it, is not a promote — that's back-capture (Step 5), handled separately. Reject it and say why.
+  - Ask in plain terms ("which environment are the changes in?"), then state the resolved target and confirm.
 
 Confirm both orgs authenticate (`sf org display --target-org <alias>`).
 
@@ -99,7 +104,8 @@ Only once drift is checked and resolved do you deploy. After an explicit clean d
 **Back-capture — whenever you accept an org change** (a merged overlap, or a captured unrelated drift), don't leave it living only in the higher env. The **resolved content** is what the target should now hold — for a merge, the `.merged` file `detect_drift.py` wrote; for unrelated drift, the target org's version. Preserve it and flow it **down** so the next promote can't re-clobber it:
 
 1. **Target branch** — commit the resolved component on the target branch. (For a mergeable overlap this is the same content you deploy to the target; for unrelated drift it's the org's version.)
-2. **Back-port down to Dev** — write the same resolved content into the **dev branch**, commit, push, and **deploy it to the Dev org** (`--ignore-conflicts`, test level by the Apex rule). For a path longer than Dev→target (e.g. Dev→Stage→Prod with the drift in Prod), carry it through each intermediate branch *and* org between the target and Dev, so every lower env agrees.
+2. **Back-port down to Dev** — write the same resolved content into the **dev branch**, commit, push, and **deploy it to the Dev org** (`--ignore-conflicts`, test level by the Apex rule). Flow it down **one level at a time** through each intermediate branch *and* org between the target and Dev, so every lower env agrees (e.g. a drift in Prod carries through UAT down to Dev).
+   - **Fan-in — a lower level has more than one org** (e.g. the drift is in UAT and three Dev orgs sit below it): "down" is ambiguous, so **ask the consultant which dev stream(s) the change belongs to** — never guess, and never fan it into all of them by default. Back-port into each one they name. If they're unsure, leave it captured on the target branch and flag it, rather than pushing it to the wrong dev.
 3. **Re-check** — re-run `detect_drift.py` for that component; it should now report **clean** (org, branches, and Dev all agree). Record the back-capture on the `Deployment__c` (a `Deployment_Component__c` with a summary like "captured an out-of-band Stage change back to Dev").
 
 Back-capture is the mirror of a promote: a promote flows a change **up**; back-capture flows an out-of-band change **down** to the source of truth so it's never lost.

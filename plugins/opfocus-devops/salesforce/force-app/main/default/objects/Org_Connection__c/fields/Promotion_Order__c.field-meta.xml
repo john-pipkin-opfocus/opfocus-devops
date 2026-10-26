@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Promotion_Order__c</fullName>
-    <label>Promotion Order</label>
-    <description>Position of this environment in the promotion path (1 = lowest / dev).</description>
+    <label>Promotion Level</label>
+    <description>Tier of this environment in the promotion pipeline (1 = lowest / dev). Orgs that share a level are peers on the same level — e.g. several Dev orgs that all feed one UAT are all level 1. A promote flows to the next level up; back-capture flows down to the level below. Use Promotes_To__c to override the next target for exceptions (a hotfix org straight to Prod, or a level that fans out to two targets).</description>
     <type>Number</type>
     <precision>2</precision>
     <scale>0</scale>

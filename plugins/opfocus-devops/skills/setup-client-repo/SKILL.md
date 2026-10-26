@@ -15,9 +15,9 @@ Gather these (ask if not supplied):
 
 - **Cloud Coach project** (or the client **Account**) — this identifies the client. The project ties to the engagement's Opportunity/Account; that Account is the authoritative client identity used to check for an existing repo and is stored on the repo.
 - **Client name** and **repo slug** (the Bitbucket repo name) — default the client name from the resolved Account.
-- **Environments**: for each, a display **name**, the `sf` org **alias**, and the git **branch**.
+- **Environments**: for each, a display **name**, the `sf` org **alias**, the git **branch**, and a **level** (its tier in the pipeline, 1 = lowest/dev). Multiple orgs may share a level — e.g. a client like CRL with several Dev orgs that all feed one UAT: every Dev org is level 1, UAT is level 2, Prod is level 3. (All of these orgs are one pipeline for one client → still **one repo**; see Step 2.)
 - **Package source**: one env whose installed-package list seeds the shared `.forceignore` (a client's environments carry the same managed packages; use Production or the lowest env). There is **no** single "source of truth" baseline — each branch is seeded from its *own* org, because client environments are rarely in sync and clients won't refresh sandboxes for a DevOps setup.
-- **Promotion path**: the ordered list of environments.
+- **Promotion topology**: the levels above define it — a promote flows to the next level up, back-capture to the level below. Capture any exceptions (a hotfix org that skips a level, a level that fans out to two targets) as a `promotes_to` override.
 - **Baseline scope**: use `baseline-manifest.xml` in this skill folder (a scoped default); edit per client — it lists common standard objects explicitly, add/remove as the client needs.
 
 **Pilot example (sandbox-only test):**
@@ -78,7 +78,7 @@ sf data query --target-org <backend-alias> --json --query \
 
 ### 3. Confirm the plan
 
-Echo back the resolved client Account, repo slug, environments → branches → orgs (with each org's Id), package source, and promotion path. **Get an explicit "go" before creating anything** — the next step makes a real repo in Bitbucket.
+Echo back the resolved client Account, repo slug, environments → branches → orgs (with each org's Id and **level**, so peers on the same level are visible), any `promotes_to` exceptions, and the package source. **Get an explicit "go" before creating anything** — the next step makes a real repo in Bitbucket.
 
 ### 4. Create the Bitbucket repo
 
@@ -110,15 +110,20 @@ Write the scaffolding at the repo root (no metadata yet):
 - `sfdx-project.json` (sourceApiVersion 67.0, package dir `force-app`) and `force-app/main/default/.gitkeep` — the retrieve fails if the package dir is missing, and git does not track empty directories, so the `.gitkeep` keeps the dir present on every branch cut from the root.
 - `.gitignore` excluding `.sf/` and `.sfdx/` (per-clone CLI state, never committed).
 - `.forceignore` (written **before** any retrieve) excluding exactly: `**/staticresources/**`; `**/profiles/**` and `*.profile-meta.xml` (profiles are never tracked — use permission sets); and `**/<ns>__*` for each managed-package namespace from `sf package installed list --target-org <package-source> --json` (the authoritative `SubscriberPackageNamespace` values). **Never guess namespaces from file names** — a guess collides with the org's own objects (e.g. excluding the org's own `Deployment__c`).
-- `.opfocus/pipeline.yml` from the inputs, with `require_approval: true` on the environments that need review:
+- `.opfocus/pipeline.yml` from the inputs. Each environment has a **`level`** (its tier in the pipeline, 1 = lowest/dev); `require_approval: true` on environments that need review. **Orgs that share a level are peers on the same level** — several Dev orgs that all feed one UAT are all `level: 1`. A promote flows to the next level up; back-capture flows to the level below. Set the optional **`promotes_to`** only for exceptions (a hotfix org straight to Prod, or a level that fans out to two targets):
 ```yaml
 client: <Client name>
 environments:
-  - { name: Dev,  branch: dev,  org: <dev-alias> }
-  - { name: UAT,  branch: uat,  org: <uat-alias>,  validate_first: true, test_level: RunLocalTests }
-  - { name: Prod, branch: prod, org: <prod-alias>, require_approval: true, test_level: RunLocalTests }
-promotion_path: [Dev, UAT, Prod]
+  # Fan-in example: three Dev orgs (level 1) all feed one UAT (level 2), then Prod (level 3).
+  - { name: Dev,     branch: dev,     org: <dev-alias>,     level: 1 }
+  - { name: Dev2,    branch: dev2,    org: <dev2-alias>,    level: 1 }
+  - { name: AcctObj, branch: acctobj, org: <acctobj-alias>, level: 1 }
+  - { name: UAT,     branch: uat,     org: <uat-alias>,     level: 2, validate_first: true, test_level: RunLocalTests, require_approval: true }
+  - { name: Prod,    branch: prod,    org: <prod-alias>,    level: 3, require_approval: true, test_level: RunLocalTests }
+  # Exception example (optional): a hotfix org that skips UAT — promotes_to overrides the level default.
+  # - { name: Hotfix, branch: hotfix, org: <hotfix-alias>, level: 1, promotes_to: Prod }
 ```
+A simple linear pipeline is just one org per level (`Dev` = 1, `UAT` = 2, `Prod` = 3).
 
 Commit this as the root on `main` and capture its SHA — every environment branch is cut from it:
 ```
@@ -153,8 +158,9 @@ sf data create record --sobject Client_Repo__c --target-org <backend-alias> \
   --values "Name='<Client>' Account__c='<accountId>' Bitbucket_Workspace__c='<ws>' Bitbucket_Repo_Slug__c='<slug>' Bitbucket_Repo_URL__c='<html url>' Default_Branch__c='<lowest-env-branch>' Active__c=true"
 # capture the returned Id, then per environment:
 sf data create record --sobject Org_Connection__c --target-org <backend-alias> \
-  --values "Name='<alias>' Client_Repo__c='<repoId>' Org_Id__c='<org 18-char id>' Org_Type__c='<type>' Org_Alias__c='<alias>' Branch__c='<branch>' Promotion_Order__c=<n> Source_Tracking_Enabled__c=true"
+  --values "Name='<alias>' Client_Repo__c='<repoId>' Org_Id__c='<org 18-char id>' Org_Type__c='<type>' Org_Alias__c='<alias>' Branch__c='<branch>' Promotion_Order__c=<level> Source_Tracking_Enabled__c=true"
 ```
+`Promotion_Order__c` is the **level** — orgs on the same level get the same number (e.g. three Dev orgs all `1`). If the pipeline has a `promotes_to` **exception**, set `Promotes_To__c` in a second pass (it's a lookup to another `Org_Connection__c`, so the target connection must exist first): capture each connection's Id, then `sf data update record --sobject Org_Connection__c --record-id <sourceConnId> --values "Promotes_To__c='<targetConnId>'"`. Leave it blank for every org that just follows the level default.
 
 ### 10. Report
 
